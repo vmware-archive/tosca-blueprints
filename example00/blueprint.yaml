@@ -1,0 +1,146 @@
+tosca_definitions_version: cloudify_dsl_1_0
+ 
+imports:
+  - http://www.getcloudify.org/spec/cloudify/3.2m6/types.yaml
+  - https://raw.githubusercontent.com/pacogomez/tosca-vcloud-plugin/1.2-build/plugin.yaml
+  - http://www.getcloudify.org/spec/diamond-plugin/1.2m6/plugin.yaml
+  - types/nodecellar.yaml
+  
+inputs:
+ 
+  catalog:
+    description: >
+      The vCloud catalog
+    default: ''
+ 
+  template:
+    description: >
+      The vCloud template
+    default: ''
+ 
+  agent_user:
+    description: >
+      User name used when SSH-ing into the started machine
+    default: ubuntu
+ 
+  management_network_name:
+    description: >
+      Name of the network that will be used for Cloudify management
+    type: string
+ 
+  vcloud_username:
+    type: string
+ 
+  vcloud_password:
+    type: string
+ 
+  vcloud_url:
+    type: string
+ 
+  vcloud_service:
+    type: string
+    default: ''
+ 
+  vcloud_service_type:
+    type: string
+    default: 'subscription'
+ 
+  vcloud_api_version:
+    type: string
+    default: '5.6'
+ 
+  vcloud_vdc:
+    type: string
+
+  vcloud_region:
+    type: string
+    default: ''
+
+  floating_ip_gateway:
+    type: string
+    
+  manager_public_key:
+    type: string
+    default: ''
+    
+  server_name:
+    type: string
+    
+  manager_private_key_path:
+    type: string
+    default: '/home/ubuntu/.ssh/id_rsa_manager'
+    
+  manager_server_user:
+    type: string
+    default: 'ubuntu'
+
+node_types:
+ 
+  examples.nodes.Server:
+    derived_from: cloudify.vcloud.nodes.Server
+    properties:
+      cloudify_agent:
+        default:
+          user: { get_input: agent_user }
+          home_dir: /home/ubuntu
+      management_network:
+        default: { get_input: management_network_name }
+ 
+  vcloud_configuration:
+    derived_from: cloudify.nodes.Root
+    properties:
+      vcloud_config: {}
+ 
+node_templates:
+
+  manager_keypair:
+    type: cloudify.vcloud.nodes.KeyPair
+    properties:
+      private_key_path: { get_input: manager_private_key_path }
+      public_key:
+        key: { get_input: manager_public_key }
+        user: { get_input: manager_server_user }
+ 
+  vcloud_configuration:
+    type: vcloud_configuration
+    properties:
+      vcloud_config:
+        username: { get_input: vcloud_username }
+        password: { get_input: vcloud_password }
+        url: { get_input: vcloud_url }
+        service: { get_input: vcloud_service }
+        vdc: { get_input: vcloud_vdc }
+        service_type: { get_input: vcloud_service_type }
+        api_version: { get_input: vcloud_api_version }
+        region: { get_input: vcloud_region }
+ 
+  mongod_host:
+    type: examples.nodes.Server
+    properties:
+      server:
+          name: { get_input: server_name }
+          catalog: { get_input: catalog }
+          template: { get_input: template }
+          guest_customization:
+              computer_name: { get_input: server_name }
+              public_keys:
+                  - { get_property: [manager_keypair, public_key] }
+      vcloud_config: { get_property: [vcloud_configuration, vcloud_config] }
+    relationships:
+      - target: mongod_management_port
+        type: cloudify.vcloud.server_connected_to_port
+ 
+  mongod_management_port:
+    type: cloudify.vcloud.nodes.Port
+    properties:
+      vcloud_config: { get_property: [vcloud_configuration, vcloud_config] }
+      port:
+        network: { get_input: management_network_name }
+        ip_allocation_mode: pool
+        primary_interface: true
+  
+outputs:
+  mongod:
+    description: mongod information
+    value:
+      ip_address: { get_attribute: [ mongod_management_port, ip ] }
