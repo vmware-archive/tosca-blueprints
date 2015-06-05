@@ -1,8 +1,9 @@
 vcloud_username: email@company.com
 vcloud_password: 'mysecretpassord'
-vcloud_url: iam.vchs.vmware.com
-vcloud_vdc: VDC1
 vcloud_instance: d7a623de-1183-46a9-9b02-9043ca68f881
+vcloud_vdc: VDC1
+
+vcloud_url: iam.vchs.vmware.com
 vcloud_api_version: '5.7'
 vcloud_service_type: ondemand
 
