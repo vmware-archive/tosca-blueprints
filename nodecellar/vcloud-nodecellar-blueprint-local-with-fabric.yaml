@@ -1,0 +1,114 @@
+###########################################################
+# This Blueprint installs the nodecellar application
+# on a local machine.
+###########################################################
+
+tosca_definitions_version: cloudify_dsl_1_0
+
+imports:
+  - http://www.getcloudify.org/spec/cloudify/3.3m2/types.yaml
+  - http://www.getcloudify.org/spec/fabric-plugin/1.2/plugin.yaml
+  - types/nodecellar-agentless.yaml
+
+inputs:
+
+    servers_user:
+        default: ubuntu
+        type: string
+        description: >
+            Default admin user in os template
+
+    private_key_path:
+        default: /home/ubuntu/.ssh/id_rsa
+        type: string
+        description: >
+            Please upload key to manager server before use key
+
+    host_string:
+        default: localhost
+        type: string
+
+    port:
+        default: 22
+        type: string
+
+node_templates:
+
+  host:
+    type: cloudify.nodes.Compute
+    properties:
+      ip: { get_input: servers_user }
+      install_agent: false
+
+  mongod:
+    type: agentless.nodes.MongoDatabase
+    properties:
+      port: 27017
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: host
+    interfaces:
+        cloudify.interfaces.lifecycle:
+            start:
+                inputs:
+                    fabric_env:
+                        user: { get_input: servers_user }
+                        key_filename: { get_input: private_key_path }
+                        host_string: { get_input: host_string }
+                        port: { get_input: port }
+
+  nodejs:
+    type: agentless.nodes.NodeJSServer
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: host
+    interfaces:
+        cloudify.interfaces.lifecycle:
+            start:
+                inputs:
+                    fabric_env:
+                        user: { get_input: servers_user }
+                        key_filename: { get_input: private_key_path }
+                        host_string: { get_input: host_string }
+                        port: { get_input: port }
+
+  nodecellar:
+    type: agentless.nodes.nodecellar
+    properties:
+      port: 8080
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: nodejs
+      - type: cloudify.relationships.connected_to
+        target: mongod
+    interfaces:
+        cloudify.interfaces.lifecycle:
+            start:
+                inputs:
+                    fabric_env:
+                        user: { get_input: servers_user }
+                        key_filename: { get_input: private_key_path }
+                        host_string: { get_input: host_string }
+                        port: { get_input: port }
+                    MONGO_HOST: { get_input: host_string }
+            stop:
+                inputs:
+                    fabric_env:
+                        user: { get_input: servers_user }
+                        key_filename: { get_input: private_key_path }
+                        host_string: { get_input: host_string }
+                        port: { get_input: port }
+
+
+###########################################################
+# This outputs section exposes the application endpoint.
+# You can access it by running:
+#   - cfy deployments -d <deployment_id> outputs
+###########################################################
+
+outputs:
+  endpoint:
+    description: Web application endpoint
+    value:
+      ip_address: localhost
+      port: { get_property: [nodecellar, port] }
