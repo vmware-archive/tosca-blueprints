@@ -67,6 +67,7 @@ node_templates:
                 vdc: { get_input: vcloud_vdc }
                 org: { get_input: vcloud_vdc }
                 service_type: { get_input: vcloud_service_type }
+                service: { get_input: vcloud_service }
                 api_version: { get_input: vcloud_api_version }
 
     ssh_keypair:
