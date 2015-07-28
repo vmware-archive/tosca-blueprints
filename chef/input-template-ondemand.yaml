@@ -1,0 +1,19 @@
+vcloud_username: email@company.com
+vcloud_password: 'mypassword'
+vcloud_instance: 95e04439-7dcc-42e3-90ec-36ef2e4b0757
+vcloud_vdc: VDC_NAME
+vcloud_url: vca.vmware.com
+vcloud_api_version: '5.7'
+vcloud_service_type: ondemand
+catalog: 'Public Catalog'
+template: 'Ubuntu Server 12.04 LTS (amd64 20150127)'
+network_name: routed-120
+gateway_name: gateway
+ssh_user: ubuntu
+root_password: wordpress
+ssh_private_key_path: ~/.ssh/id_rsa
+ssh_public_key: 
+public_ip_1: 92.246.242.115
+public_ip_2: 92.246.242.37
+server_name_1: chef
+server_name_2: Jenkins
