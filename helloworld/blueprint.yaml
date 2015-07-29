@@ -27,7 +27,6 @@ inputs:
     type: string
   ssh_private_key_path:
     type: string
- 
   vcloud_username:
     type: string
   vcloud_password:
@@ -48,6 +47,13 @@ inputs:
   vcloud_instance:
     type: string
     default: ''
+  auto_generate_ssh_keys:
+    type: boolean
+    default: false
+    description: >
+        If this value is true, 
+        the private key path and public key 
+        inputs will be ignored
 
 node_types:
 
@@ -74,7 +80,8 @@ node_templates:
 
     ssh_keypair:
       type: cloudify.vcloud.nodes.KeyPair
-      properties:
+      properties:         
+        auto_generate: { get_input: auto_generate_ssh_keys }
         private_key:
           path: { get_input: ssh_private_key_path }
         public_key:
@@ -144,8 +151,8 @@ node_templates:
                       fabric_env:
                         host_string: { get_input: public_ip }
                         host: { get_input: public_ip }
-                        user: { get_property: [ssh_keypair, public_key, user] }
-                        key_filename: { get_property: [ssh_keypair, private_key, path] }
+                        user: { get_attribute: [ssh_keypair, public_key, user] }
+                        key_filename: { get_attribute: [ssh_keypair, private_key, path] }
                         disable_known_hosts: True
         relationships:
           - type: cloudify.relationships.contained_in
