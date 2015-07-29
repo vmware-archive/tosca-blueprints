@@ -3,7 +3,7 @@ tosca_definitions_version: cloudify_dsl_1_0
 imports:
 
     - http://www.getcloudify.org/spec/cloudify/3.2/types.yaml
-    - https://raw.githubusercontent.com/cloudify-cosmo/tosca-vcloud-plugin/master/plugin.yaml
+    - https://raw.githubusercontent.com/cloudify-cosmo/tosca-vcloud-plugin/1.2.1/plugin.yaml
     - http://www.getcloudify.org/spec/fabric-plugin/1.2/plugin.yaml
 
 inputs:
@@ -18,6 +18,7 @@ inputs:
     type: string
   public_ip:
     type: string
+    default: ''
   server_name:
     type: string
   ssh_user:
@@ -46,6 +47,7 @@ inputs:
     type: string
   vcloud_instance:
     type: string
+    default: ''
 
 node_types:
 
@@ -73,7 +75,8 @@ node_templates:
     ssh_keypair:
       type: cloudify.vcloud.nodes.KeyPair
       properties:
-        private_key_path: { get_input: ssh_private_key_path }
+        private_key:
+          path: { get_input: ssh_private_key_path }
         public_key:
           key: { get_input: ssh_public_key }
           user: { get_input: ssh_user }
@@ -90,8 +93,6 @@ node_templates:
                     memory: 2048
                 guest_customization:
                     computer_name: { get_input: server_name }
-                    public_keys:
-                        - { get_property: [ssh_keypair, public_key] }
             install_agent: false
             management_network: { get_input: network_name }
             vcloud_config: { get_property: [vcloud_configuration, vcloud_config] }
@@ -100,6 +101,9 @@ node_templates:
               type: cloudify.vcloud.server_connected_to_port
             - target: example_public_ip
               type: cloudify.vcloud.server_connected_to_public_nat
+            - target: ssh_keypair
+              type: cloudify.vcloud.server_connected_to_keypair
+
 
     example_port:
         type: cloudify.vcloud.nodes.Port
@@ -141,7 +145,7 @@ node_templates:
                         host_string: { get_input: public_ip }
                         host: { get_input: public_ip }
                         user: { get_property: [ssh_keypair, public_key, user] }
-                        key_filename: { get_property: [ssh_keypair, private_key_path] }
+                        key_filename: { get_property: [ssh_keypair, private_key, path] }
                         disable_known_hosts: True
         relationships:
           - type: cloudify.relationships.contained_in
