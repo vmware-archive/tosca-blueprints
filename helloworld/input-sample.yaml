@@ -1,0 +1,18 @@
+vcloud_username: email@company.com
+vcloud_password: 'mypassword123!'
+vcloud_url: vca.vmware.com
+vcloud_vdc: vdc1
+vcloud_instance: b50d1558-db46-3afb-97d1-2c4d23e4b8a9
+vcloud_api_version: '5.7'
+vcloud_service_type: ondemand
+
+catalog: 'Public Catalog'
+template: 'Ubuntu Server 12.04 LTS (amd64 20150127)'
+network_name: net-120
+gateway_name: gateway
+server_name: hellow
+public_ip: 107.189.94.110
+ssh_user: ubuntu
+auto_generate_ssh_keys: true
+ssh_private_key_path: ''
+ssh_public_key: ''

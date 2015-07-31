@@ -23,6 +23,10 @@ inputs:
     type: string
   ssh_user:
     type: string
+  ssh_public_key:
+    type: string
+  ssh_private_key_path:
+    type: string
   vcloud_username:
     type: string
   vcloud_password:
@@ -34,7 +38,7 @@ inputs:
     type: string
     default: ''
   vcloud_service_type:
-    default: 'vca'
+    default: 'ondemand'
   vcloud_api_version:
     type: string
     default: '5.7'
@@ -69,15 +73,20 @@ node_templates:
                 url: { get_input: vcloud_url }
                 instance: { get_input: vcloud_instance }
                 vdc: { get_input: vcloud_vdc }
+                org: { get_input: vcloud_vdc }
                 service_type: { get_input: vcloud_service_type }
                 service: { get_input: vcloud_service }
-                org: { get_input: vcloud_vdc }
                 api_version: { get_input: vcloud_api_version }
 
     ssh_keypair:
       type: cloudify.vcloud.nodes.KeyPair
       properties:         
         auto_generate: { get_input: auto_generate_ssh_keys }
+        private_key:
+          path: { get_input: ssh_private_key_path }
+        public_key:
+          key: { get_input: ssh_public_key }
+          user: { get_input: ssh_user }
 
     example_server:
         type: cloudify.vcloud.nodes.Server
