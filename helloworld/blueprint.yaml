@@ -2,7 +2,7 @@ tosca_definitions_version: cloudify_dsl_1_0
 
 imports:
 
-    - http://www.getcloudify.org/spec/cloudify/3.2/types.yaml
+    - http://s3.amazonaws.com/vcloud-score/types.yaml
     - https://raw.githubusercontent.com/cloudify-cosmo/tosca-vcloud-plugin/1.2.1/plugin.yaml
     - http://www.getcloudify.org/spec/fabric-plugin/1.2/plugin.yaml
 
@@ -23,22 +23,18 @@ inputs:
     type: string
   ssh_user:
     type: string
-  ssh_public_key:
-    type: string
-  ssh_private_key_path:
-    type: string
   vcloud_username:
     type: string
   vcloud_password:
     type: string
   vcloud_url:
     type: string
-    default: 'iam.vchs.vmware.com'
+    default: 'vca.vmware.com'
   vcloud_service:
     type: string
     default: ''
   vcloud_service_type:
-    default: 'ondemand'
+    default: 'vca'
   vcloud_api_version:
     type: string
     default: '5.7'
@@ -73,21 +69,15 @@ node_templates:
                 url: { get_input: vcloud_url }
                 instance: { get_input: vcloud_instance }
                 vdc: { get_input: vcloud_vdc }
-                org: { get_input: vcloud_vdc }
                 service_type: { get_input: vcloud_service_type }
                 service: { get_input: vcloud_service }
+                org: { get_input: vcloud_vdc }
                 api_version: { get_input: vcloud_api_version }
-
 
     ssh_keypair:
       type: cloudify.vcloud.nodes.KeyPair
       properties:         
         auto_generate: { get_input: auto_generate_ssh_keys }
-        private_key:
-          path: { get_input: ssh_private_key_path }
-        public_key:
-          key: { get_input: ssh_public_key }
-          user: { get_input: ssh_user }
 
     example_server:
         type: cloudify.vcloud.nodes.Server
@@ -143,17 +133,14 @@ node_templates:
         interfaces:
             cloudify.interfaces.lifecycle:
                 start:
-                    implementation: fabric.fabric_plugin.tasks.run_commands
+                    implementation: fabric.fabric_plugin.tasks.run_script
                     inputs:
-                      commands:
-                        - sudo apt-get update
-                        - sudo apt-get install -y nginx
-                        - sudo service nginx start
+                      script_path: script.sh
                       fabric_env:
                         host_string: { get_input: public_ip }
                         host: { get_input: public_ip }
                         user: { get_attribute: [ssh_keypair, public_key, user] }
-                        key_filename: { get_attribute: [ssh_keypair, private_key, path] }
+                        key: { get_attribute: [ssh_keypair, private_key, key] }
                         disable_known_hosts: True
         relationships:
           - type: cloudify.relationships.contained_in
