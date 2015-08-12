@@ -49,7 +49,7 @@ inputs:
     default: ''
   auto_generate_ssh_keys:
     type: boolean
-    default: false
+    default: true
     description: >
         If this value is true, 
         the private key path and public key 
@@ -80,12 +80,9 @@ node_templates:
 
     ssh_keypair:
       type: cloudify.vcloud.nodes.KeyPair
-      properties:         
+      properties:
         auto_generate: { get_input: auto_generate_ssh_keys }
-        private_key:
-          path: { get_input: ssh_private_key_path }
         public_key:
-          key: { get_input: ssh_public_key }
           user: { get_input: ssh_user }
 
     example_server:
@@ -149,7 +146,7 @@ node_templates:
                         host_string: { get_input: public_ip }
                         host: { get_input: public_ip }
                         user: { get_attribute: [ssh_keypair, public_key, user] }
-                        key: { get_attribute: [ssh_keypair, private_key, key] }
+                        key_filename: { get_attribute: [ssh_keypair, private_key, key] }
                         disable_known_hosts: True
         relationships:
           - type: cloudify.relationships.contained_in
