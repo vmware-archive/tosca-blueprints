@@ -4,7 +4,7 @@ imports:
 
     - http://s3.amazonaws.com/vcloud-score/types.yaml
     - https://raw.githubusercontent.com/cloudify-cosmo/tosca-vcloud-plugin/1.2.1/plugin.yaml
-    - http://www.getcloudify.org/spec/fabric-plugin/1.2/plugin.yaml
+    - http://s3.amazonaws.com/vcloud-score/cloudify-fabric-plugin/1.2/plugin.yaml
 
 inputs:
 
