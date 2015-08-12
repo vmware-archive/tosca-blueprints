@@ -89,12 +89,8 @@ node_templates:
       type: cloudify.vcloud.nodes.KeyPair
       properties:
         auto_generate: { get_input: auto_generate_ssh_keys }
-        private_key:
-          path: { get_input: ssh_private_key_path }
         public_key:
-          key: { get_input: ssh_public_key }
           user: { get_input: ssh_user }
-
 
     example_server:
         type: cloudify.vcloud.nodes.Server
@@ -167,3 +163,9 @@ node_templates:
       relationships:
         - type: cloudify.relationships.contained_in
           target: example_server
+
+outputs:
+    ssh_key:
+        value:
+            public_key: { get_attribute: [ssh_keypair, public_key, key] }
+            private_key: { get_attribute: [ssh_keypair, private_key, key] }
