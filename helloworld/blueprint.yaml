@@ -1,66 +1,50 @@
 tosca_definitions_version: cloudify_dsl_1_0
 
 imports:
-
     - http://s3.amazonaws.com/vcloud-score/types.yaml
     - https://raw.githubusercontent.com/cloudify-cosmo/tosca-vcloud-plugin/1.2.1/plugin.yaml
-    - http://www.getcloudify.org/spec/fabric-plugin/1.2/plugin.yaml
+    - http://s3.amazonaws.com/vcloud-score/cloudify-fabric-plugin/1.2/plugin.yaml
+
 
 inputs:
-
   catalog:
-    type: string
+      type: string
   template:
-    type: string
+      type: string
   network_name:
-    type: string
+      type: string
   gateway_name:
-    type: string
+      type: string
   public_ip:
-    type: string
-    default: ''
+      type: string
   server_name:
-    type: string
+      type: string
   ssh_user:
-    type: string
-  ssh_public_key:
-    type: string
-  ssh_private_key_path:
-    type: string
-  vcloud_username:
-    type: string
-  vcloud_password:
-    type: string
-  vcloud_url:
-    type: string
-    default: 'vca.vmware.com'
-  vcloud_service:
-    type: string
-    default: ''
-  vcloud_service_type:
-    default: 'ondemand'
-  vcloud_api_version:
-    type: string
-    default: '5.7'
-  vcloud_vdc:
-    type: string
-  vcloud_instance:
-    type: string
-    default: ''
+      type: string
   auto_generate_ssh_keys:
-    type: boolean
-    default: true
-    description: >
-        If this value is true, 
-        the private key path and public key 
-        inputs will be ignored
+      type: boolean
+  vcloud_username:
+      type: string
+  vcloud_password:
+      type: string
+  vcloud_url:
+      type: string
+  vcloud_service_type:
+      type: string
+  vcloud_api_version:
+      type: string
+  vcloud_vdc:
+      type: string
+  vcloud_instance:
+      type: string
+
 
 node_types:
-
     vcloud_configuration:
         derived_from: cloudify.nodes.Root
         properties:
             vcloud_config: {}
+
 
 node_templates:
 
@@ -75,7 +59,6 @@ node_templates:
                 vdc: { get_input: vcloud_vdc }
                 org: { get_input: vcloud_vdc }
                 service_type: { get_input: vcloud_service_type }
-                service: { get_input: vcloud_service }
                 api_version: { get_input: vcloud_api_version }
 
     ssh_keypair:
@@ -107,7 +90,6 @@ node_templates:
               type: cloudify.vcloud.server_connected_to_public_nat
             - target: ssh_keypair
               type: cloudify.vcloud.server_connected_to_keypair
-
 
     example_port:
         type: cloudify.vcloud.nodes.Port
@@ -146,9 +128,17 @@ node_templates:
                         host_string: { get_input: public_ip }
                         host: { get_input: public_ip }
                         user: { get_attribute: [ssh_keypair, public_key, user] }
-                        key_filename: { get_attribute: [ssh_keypair, private_key, key] }
+                        key: { get_attribute: [ssh_keypair, private_key, key] }
                         disable_known_hosts: True
         relationships:
           - type: cloudify.relationships.contained_in
             target: example_server
+
+
+outputs:
+    ssh_key:
+        description: ssh key pair generated during deployment
+        value:
+            public_key: { get_attribute: [ssh_keypair, public_key, key] }
+            private_key: { get_attribute: [ssh_keypair, private_key, key] }
 
