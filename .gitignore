@@ -54,3 +54,6 @@ docs/_build/
 
 # PyBuilder
 target/
+
+# OSX FS meta file
+.DS_Store
