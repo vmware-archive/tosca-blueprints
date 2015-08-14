@@ -1,0 +1,17 @@
+vcloud_username: email@company.com
+vcloud_password: 'PASSWORD'
+vcloud_instance: 95e04439-7dcc-42e3-90ec-36ef2e4b0757
+vcloud_vdc: 'VDC1'
+vcloud_url: vca.vmware.com
+vcloud_api_version: '5.7'
+vcloud_service_type: ondemand
+catalog: 'Public Catalog'
+template: 'Ubuntu Server 12.04 LTS (amd64 20150127)'
+network_name: default-routed-network
+gateway_name: gateway
+ssh_user: ubuntu
+auto_generate_ssh_keys: true
+server_name_1: chef
+server_name_2: Jenkins
+chef_ip_address: 92.246.242.115
+jenkins_ip_address: 92.246.242.37

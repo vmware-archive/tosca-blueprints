@@ -1,0 +1,295 @@
+tosca_definitions_version: cloudify_dsl_1_0
+
+imports:
+
+    - http://s3.amazonaws.com/vcloud-score/types.yaml
+    - https://raw.githubusercontent.com/cloudify-cosmo/tosca-vcloud-plugin/1.2.1/plugin.yaml
+    - http://s3.amazonaws.com/vcloud-score/cloudify-fabric-plugin/1.2/plugin.yaml
+
+
+inputs:
+#############################
+  catalog:
+    type: string
+    description: >
+        Name of catalog, can be 'Public Catalog'
+  template:
+    type: string
+    description: >
+        Name of template from catalog,
+        can be 'Ubuntu Server 12.04 LTS (amd64 20150127)'
+  network_name:
+    type: string
+    description: >
+        network that can be used for nodes
+  gateway_name:
+    type: string
+    description: >
+        For 'ondemand' service type, the value of edge_gateway
+        can be 'gateway'
+  server_cpu:
+    type: string
+    default: 1
+    description: >
+        Count cpu on nodes
+  server_memory:
+    type: string
+    default: 1024
+    description: >
+        Amount memmory on nodes
+  chef_ip_address:
+    type: string
+  jenkins_ip_address:
+    type: string
+  server_name_1:
+    type: string
+  server_name_2:
+    type: string
+  ssh_user:
+    type: string
+    description: >
+        Default admin user in os template
+  ssh_public_key:
+    type: string
+  ssh_private_key_path:
+    type: string
+  #############################
+  vcloud_username:
+    type: string
+    description: >
+        User login for vCloud air
+  vcloud_password:
+    type: string
+    description: >
+        User password for vCloud air
+  vcloud_url:
+    type: string
+    default: 'vca.vmware.com'
+    description: >
+        vCloud air URL
+  vcloud_service:
+    type: string
+    default: ''
+    description: >
+        vCloud service
+  vcloud_service_type:
+    default: 'ondemand'
+    description: >
+        Type of service: subscription, ondemand, vcd, private
+  vcloud_api_version:
+    type: string
+    default: '5.7'
+  vcloud_vdc:
+    type: string
+  vcloud_instance:
+    type: string
+    default: ''
+    description: >
+        Only needed for ondemand account
+  auto_generate_ssh_keys:
+    type: boolean
+    default: false
+    description: >
+        If this value is true,
+        the private key path and public key
+        inputs will be ignored
+
+node_types:
+
+    vcloud_configuration:
+        derived_from: cloudify.nodes.Root
+        properties:
+            vcloud_config: {}
+
+node_templates:
+
+    vcloud_configuration:
+        type: vcloud_configuration
+        properties:
+            vcloud_config:
+                username: { get_input: vcloud_username }
+                password: { get_input: vcloud_password }
+                url: { get_input: vcloud_url }
+                instance: { get_input: vcloud_instance }
+                vdc: { get_input: vcloud_vdc }
+                org: { get_input: vcloud_vdc }
+                service_type: { get_input: vcloud_service_type }
+                service: { get_input: vcloud_service }
+                api_version: { get_input: vcloud_api_version }
+                edge_gateway: {get_input: gateway_name}
+
+    ssh_keypair:
+      type: cloudify.vcloud.nodes.KeyPair
+      properties:
+        auto_generate: { get_input: auto_generate_ssh_keys }
+        public_key:
+          user: { get_input: ssh_user }
+
+
+    chef_server:
+        type: cloudify.vcloud.nodes.Server
+        properties:
+            server:
+                name: { get_input: server_name_1 }
+                catalog: { get_input: catalog }
+                template: { get_input: template }
+                hardware:
+                    cpu: 1
+                    memory: 1024
+                guest_customization:
+                    computer_name: { get_input: server_name_1}
+            install_agent: false
+            management_network: { get_input: network_name }
+            vcloud_config: { get_property: [vcloud_configuration, vcloud_config] }
+        relationships:
+          - target: example_port
+            type: cloudify.vcloud.server_connected_to_port
+          - target: chef_server_nat
+            type: cloudify.vcloud.server_connected_to_public_nat
+          - target: ssh_keypair
+            type: cloudify.vcloud.server_connected_to_keypair
+
+
+    jenkins_server:
+        type: cloudify.vcloud.nodes.Server
+        properties:
+            server:
+                name: { get_input: server_name_2 }
+                catalog: { get_input: catalog }
+                template: { get_input: template }
+                hardware:
+                    cpu: 1
+                    memory: 1024
+                guest_customization:
+                    computer_name: { get_input: server_name_2 }
+            install_agent: false
+            management_network: { get_input: network_name }
+            vcloud_config: { get_property: [vcloud_configuration, vcloud_config] }
+        relationships:
+          - target: example_port
+            type: cloudify.vcloud.server_connected_to_port
+          - target: example_jenkins_ip_address
+            type: cloudify.vcloud.server_connected_to_public_nat
+          - target: ssh_keypair
+            type: cloudify.vcloud.server_connected_to_keypair
+
+
+    example_port:
+        type: cloudify.vcloud.nodes.Port
+        properties:
+            port:
+                network: { get_input: network_name }
+                ip_allocation_mode: pool
+                primary_interface: true
+
+    chef_server_nat:
+        type: cloudify.vcloud.nodes.PublicNAT
+        properties:
+            nat:
+                edge_gateway: { get_input: gateway_name }
+                public_ip: { get_input: chef_ip_address }
+            rules:
+                - type: SNAT
+                - type: DNAT
+                  protocol: tcp
+                  original_port: 22
+                  translated_port: 22
+                - type: DNAT
+                  protocol: tcp
+                  original_port: 80
+                  translated_port: 80
+                - type: DNAT
+                  protocol: tcp
+                  original_port: 443
+                  translated_port: 443
+
+    example_jenkins_ip_address:
+        type: cloudify.vcloud.nodes.PublicNAT
+        properties:
+            nat:
+                edge_gateway: { get_input: gateway_name }
+                public_ip: { get_input: jenkins_ip_address }
+            rules:
+                - type: SNAT
+                - type: DNAT
+                  protocol: tcp
+                  original_port: 22
+                  translated_port: 22
+                - type: DNAT
+                  protocol: tcp
+                  original_port: 80
+                  translated_port: 80
+                - type: DNAT
+                  protocol: tcp
+                  original_port: 443
+                  translated_port: 443
+                - type: DNAT
+                  protocol: tcp
+                  original_port: 8080
+                  translated_port: 8080
+                - type: DNAT
+                  protocol: tcp
+                  original_port: 4444
+                  translated_port: 4444
+
+    chef_installation:
+      type: cloudify.nodes.Root
+      interfaces:
+        cloudify.interfaces.lifecycle:
+          start:
+            implementation: fabric.fabric_plugin.tasks.run_script
+            inputs:
+              script_path: scripts/chef.sh
+              fabric_env:
+                host_string: { get_input: chef_ip_address }
+                host: { get_input: chef_ip_address }
+                user: { get_attribute: [ssh_keypair, public_key, user] }
+                key: { get_attribute: [ssh_keypair, private_key, key] }
+                disable_known_hosts: True
+      relationships:
+        - type: cloudify.relationships.contained_in
+          target: chef_server
+
+    jenkins_installation:
+      type: cloudify.nodes.Root
+      interfaces:
+        cloudify.interfaces.lifecycle:
+          start:
+            implementation: fabric.fabric_plugin.tasks.run_script
+            inputs:
+              script_path: scripts/jenkins.sh
+              fabric_env:
+                host_string: { get_input: jenkins_ip_address }
+                host: { get_input: jenkins_ip_address }
+                user: { get_attribute: [ssh_keypair, public_key, user] }
+                key: { get_attribute: [ssh_keypair, private_key, key] }
+                disable_known_hosts: True
+      relationships:
+        - type: cloudify.relationships.contained_in
+          target: jenkins_server          
+
+    selenium_installation:
+      type: cloudify.nodes.Root
+      interfaces:
+        cloudify.interfaces.lifecycle:
+          start:
+            implementation: fabric.fabric_plugin.tasks.run_script
+            inputs:
+              script_path: scripts/selenium.sh
+              fabric_env:
+                host_string: { get_input: jenkins_ip_address }
+                host: { get_input: jenkins_ip_address }
+                user: { get_attribute: [ssh_keypair, public_key, user] }
+                key: { get_attribute: [ssh_keypair, private_key, key] }
+                disable_known_hosts: True
+      relationships:
+        - type: cloudify.relationships.contained_in
+          target: jenkins_server
+        - type: cloudify.relationships.depends_on
+          target: jenkins_installation
+
+outputs:
+  ssh_key:
+      value:
+          public_key: { get_attribute: [ssh_keypair, public_key, key] }
+          private_key: { get_attribute: [ssh_keypair, private_key, key] }
