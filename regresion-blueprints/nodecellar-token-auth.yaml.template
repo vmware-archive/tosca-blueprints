@@ -1,0 +1,8 @@
+network_name: some_network
+vcloud_url: https://vchs.vmware.com
+vcloud_service: some_service
+vcloud_org: some_org
+vcloud_vdc: some_vdc
+edge_gateway: some_edge
+public_ip: some_nodejs_ip
+network_use_existing: false

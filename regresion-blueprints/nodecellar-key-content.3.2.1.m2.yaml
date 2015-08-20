@@ -1,0 +1,539 @@
+tosca_definitions_version: cloudify_dsl_1_0
+
+imports:
+    - http://s3.amazonaws.com/vcloud-score/types.yaml
+    - https://raw.githubusercontent.com/cloudify-cosmo/tosca-vcloud-plugin/1.2.1m2/plugin.yaml
+    - http://s3.amazonaws.com/vcloud-score/cloudify-fabric-plugin/1.2/plugin.yaml
+    - types/agentless.yaml
+
+inputs:
+    vcloud_username:
+        type: string
+        description: >
+            User login for vcloud air
+
+    vcloud_password:
+        type: string
+        default: ''
+        description: >
+            User password for vcloud air - for login by name + password
+
+    vcloud_token:
+        type: string
+        default: ''
+        description: >
+            User token for vcloud air - for login by name + token
+
+    vcloud_url:
+        type: string
+        description: >
+            Vcloud url
+
+    vcloud_service:
+        type: string
+        description: >
+            Vcloud service
+
+    vcloud_service_type:
+        type: string
+        default: 'subscription'
+        description: >
+            Type of service: subscription, ondemand, vcd, private
+
+    vcloud_instance:
+        type: string
+        default: ''
+        description: >
+            Only required for ondemand service type, instance uuid
+
+    vcloud_api_version:
+        type: string
+        default: '5.6'
+        description: >
+            Version of api, for now 5.6
+
+    nodejs_ssh:
+        type: string
+        default: 22
+        description: >
+            Ssh port for nodejs host
+
+    mongo_ssh:
+        type: string
+        default: 23
+        description: >
+            Ssh port for mongodb host
+
+    nodejs_http:
+        type: string
+        default: 8080
+        description: >
+            Http port for nodejs host
+
+    vcloud_org_url:
+        type: string
+        default: ''
+        description: >
+            Only required if using token based login on a private vcloud
+            director. This can be obtained by following the vcloud API
+            example docs. If you are unsure of how to obtain this, you will
+            need to use password based login.
+
+    vcloud_org:
+        type: string
+        description: >
+            Organization uuid
+
+    vcloud_vdc:
+        type: string
+        description: >
+            Virtual data center name
+
+    catalog:
+        type: string
+        default: Public Catalog
+        description: >
+            Name of catalog, can be 'Public Catalog'
+
+    template:
+        type: string
+        default: Ubuntu Server 12.04 LTS (amd64 20150127)
+        description: >
+            Name of template from catalog,
+            can be 'Ubuntu Server 12.04 LTS (amd64 20150127)'
+
+    server_cpu:
+        type: string
+        default: 2
+        description: >
+            Count cpu on nodes
+
+    server_memory:
+        type: string
+        default: 4096
+        description: >
+            Amount memmory on nodes
+
+    network_use_existing:
+        type: boolean
+        default: false
+        description: >
+            Use existed network
+
+    common_network_name:
+        type: string
+        description: >
+            Name common network that can be used for nodes
+
+    nodejs_ip_address:
+        type: string
+        default: ''
+        description: >
+            For 'ondemand' service type, the value of
+            nodejs_ip_address can be empty
+
+    mongo_ip_address:
+        type: string
+        default: ''
+        description: >
+            For 'ondemand' service type, the value of
+            mongo_ip_address can be empty
+
+    common_network_public_nat_use_existing:
+        type: boolean
+        default: false
+        description: >
+            Use already existed nat rules, only for case when you
+            doesn't want to change nat rules
+
+    edge_gateway:
+        type: string
+        default: gateway
+        description: >
+            For 'ondemand' service type, the value of edge_gateway
+            is always 'gateway'
+
+    servers_user:
+        default: ubuntu
+        type: string
+        description: >
+            Default admin user in os template
+
+    user_public_key:
+        type: string
+        description: >
+            Public part of your key
+        default: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCuoWlVpECc1AQ/ObXMzAqps4qMDbi3VSFb2Yl52AFWUhNLxsltFMAyS5eeYxFObqTPMVbaZR2UERrYu/X54K7mzhgoxb9/y1bzCbsLa1aaes1pInPD/kaRkBb7pe7opQFju6HbMW/WrE0bdOADaxKoTVzXd5Vj7akbUIBY2I0x0YJ3Og7LmtLd+BtLjrNswKr/N2mH54QKo2lctgfKxUmU3FOmg2CsTAr/guJi2WNZdpRrGahMwAgjxx3GJsVhWs0LNiCNUlcapQju1ifnvaflrjzdbJPeSiba9nqNgbDWZSGeRyTkljLCEYI0iN2CJZYSeJdHO98FB2SpuBmhIIRCLrMAo27eso4XKhdooxCYeF+GF9dX8XPofTHTv2rludvhPh9L2si5Rg3Jc7vjonYj0ojPgLZKB+bRxxXT2bImogDmDw/2kFn6BmbeaqpQGR9hfNI6UMQbMPtCc1xmjZz1cDU8n+XCKfjo1YKaB0BCiqZx4CtMRZGXNvogY409wbt0uR/Qx8l88uZLuStEO5qAMTIKmQzaEFl7ZcVZkIHEFpIHxvCMVRorXzUAyI4t/wvJnNgM0ypJca2NfxI6HTk8zRxpPumcWYn40PirdW5cuh2+Eu3Ek6ceN/4pLyZheUNQTEW1UzLuGyfZ8xMNfKj5lsgEcYNFpSPJC6ZF9oMgHQ== score@getcloudify.org
+
+    user_private_key:
+        type: string
+        description: >
+            Put here content of your private key,
+            with replace new line to 2 new lines.
+        default: >
+            -----BEGIN RSA PRIVATE KEY-----
+
+            MIIJKQIBAAKCAgEArqFpVaRAnNQEPzm1zMwKqbOKjA24t1UhW9mJedgBVlITS8bJ
+
+            bRTAMkuXnmMRTm6kzzFW2mUdlBEa2Lv1+eCu5s4YKMW/f8tW8wm7C2tWmnrNaSJz
+
+            w/5GkZAW+6Xu6KUBY7uh2zFv1qxNG3TgA2sSqE1c13eVY+2pG1CAWNiNMdGCdzoO
+
+            y5rS3fgbS46zbMCq/zdph+eECqNpXLYHysVJlNxTpoNgrEwK/4LiYtljWXaUaxmo
+
+            TMAII8cdxibFYVrNCzYgjVJXGqUI7tYn572n5a483WyT3kom2vZ6jYGw1mUhnkck
+
+            5JYywhGCNIjdgiWWEniXRzvfBQdkqbgZoSCEQi6zAKNu3rKOFyoXaKMQmHhfhhfX
+
+            V/Fz6H0x079q5bnb4T4fS9rIuUYNyXO746J2I9KIz4C2Sgfm0ccV09myJqIA5g8P
+
+            9pBZ+gZm3mqqUBkfYXzSOlDEGzD7QnNcZo2c9XA1PJ/lwin46NWCmgdAQoqmceAr
+
+            TEWRlzb6IGONPcG7dLkf0MfJfPLmS7krRDuagDEyCpkM2hBZe2XFWZCBxBaSB8bw
+
+            jFUaK181AMiOLf8LyZzYDNMqSXGtjX8SOh05PM0caT7pnFmJ+ND4q3VuXLodvhLt
+
+            xJOnHjf+KS8mYXlDUExFtVMy7hsn2fMTDXyo+ZbIBHGDRaUjyQumRfaDIB0CAwEA
+
+            AQKCAgEAp59iF4WpS6ArT3Eas7Erjwc6twK4yqmZcqvVzTHs3qm7weHXGLBxaBWt
+
+            PKhFRW7pHcRzZQDoKmdcyKtrCWaFHCC5ifF+xrEtDe7KLsTihTfZEdCzJG9f13ti
+
+            xDzbnU49jjjdvSOwAXS0MuW13TIa35gaxOwRZrEKwKA+Aooixa4gOEdvSjqbq9rq
+
+            gFVCnuI1gPL0hjJRSVDf4tELm7RR0+TFGrFCyz/W0roUieO2/HnZLxCavskZRxZq
+
+            2vf+QFvDM77J8j0WRQojD/ZaqZQfpFTiMXx2V0oAD+/FZS0WzESYx2/s1snhgO0D
+
+            eV/il3lymtpMA2FRymb1Vf/UAhjPOYzja03nuWAXq4oTyUIT3rJbfrtnYnkqEB4+
+
+            qqWBd+wtW9GWg14P4erDBqnJjDVOAHPcqLizaaEGzyhhtWPYvAS9XOvTDzL2NpbK
+
+            XDzxIeSqVQXJpHs8SsEmerFBAMTkoR2bnlgcmqnUAecp8OqT5Gab5NssVVFulWyh
+
+            G1+rwbMlx+Cf38bZkmO9nWDHZ37yOl8q82VkmrU5L1POFS04YEXPXCZ4NiO4i+OG
+
+            yz1P2PR4hpKzAfLTYaVZa2hbTAWKZgmIv5ZzcHmXp9teCFYscvCq2+oMWRFBbCg2
+
+            /Yi1YLAXBNQMjbFfqPraTDUF8JVrbc2zqbLapZULyVJ1soGuZ2ECggEBAOLr2iar
+
+            91xLCinWYG6zQNHRYeXqlkFZudnp5k8BR8rebN+kX+aS1u0uOewMiDKANn93gOPa
+
+            pfwQ2OIIm+1hYgNlS/RaUH6FHIuaB/y5U1NSyGn32GUEWT8MNnvDAAizRI4rVJC9
+
+            dC802ovtPnHelP9JDer3JV95Q3DqRejOwMoZrW2YSa1Ms3lf6SMIaPc/V2bMlYWw
+
+            nS/uRc9mm85NpIQbxr/wR4cTC2KxEpr6IYRbjBDv7ZMQoozUQe6XSvH9w30R5hum
+
+            yicLT3Pe9eOfoREKaKP3MalgjFEf3ILTNHNIm5afWfhY+FhZtYOAQJfW4Zi3Qx/D
+
+            pO2h1x07RuItbWkCggEBAMUCKU9tUBQXd8s4D77yY4MkRNhTgPn/hZCtFFSjRI1x
+
+            aTC7yzRP7dY45IB+So7DB+L8KNq8/O0ncmrXToCj3iZQ4RNdPBNMhcDjq+TRbM6K
+
+            Ic/57JG5eW3IskjeTRKyWIEyqaePdphwn8BBNl6yR0vSi55v6RmwREOSPodtnhfq
+
+            2rmpzKgKHJKWxszkZISBNkFF8eTXg8WndL3yyBTp94cJSQIh6KnY4Xhu0qW/B5tU
+
+            /nGl4EmrmkRzAEu7NeCI8lgK5fsiual/pQJb8x+8fTBoVLvfH/1x8OO1tyUJ8IY2
+
+            6hruEx8fNps5YrbSVsywQUK9jG0KkNv2+WXZe8NmopUCggEAHa4zrnM3u36lKau8
+
+            mT4g8FCuuV/hn1KZGIObeCH2vfYxz160nHgAXK17LgDFn7Vda3a6CROEOmAJviba
+
+            HkZqh38sXB2kAahvf2L6QHgNCgz94b5lM3FKKxDx32Y2Du1DvkS0nuno1HPZUgwJ
+
+            6uLuIiXwCBejb8VwqMg7tKO2W7jYEkmk+WHa57k/yTFEaXKDgBKqS/450RcdUm9d
+
+            WbKWHiFz8Y8ADA7Vomb+w/6Le8BtpZl8PYwjdsAcj5SCXPyQIT/CFUPPlSPJlKJJ
+
+            DyjF7HCsFyYx/LGAKOw9726ooZuRnjXhkrYwZX32W+jeif21LEBsKy9v1xUgCdbD
+
+            ArpmYQKCAQEAhhUegIxpgAMo6QrSzKazy8GXiZPrqDqccQcbWy9zrMCPUze86XGs
+
+            8avu+PT7UYazi20LcTRHADFk0gqPx0XAIFvTlBZUmN3v+oP5rdZLM5cXxDDZLaUK
+
+            XAnILYf+9MalLemJRh2CHeYpE/ROSM0VcSlvFPodr/oju8mA/TNB8g1JqCtEuumG
+
+            4M31p+WZ9ATtJCeypol3icKa1dyzCGjkqudK5USm0VJmwkzK2TvWtYV3V2oJ6Jn+
+
+            eK+8d86GsLcEGZ/xPqc3rYDOkXh7VBI5MgUQBn2pjBlMVe6LI45MQUyGsKVwJjJc
+
+            O/Emmj82DEG5aO8Q7/XM+ahxvTvz292ysQKCAQA6Sx6q1QzL3eAxUU4rSP7VQBht
+
+            4uzJzvxe70kMuOJyQAzau5re4EfF5FS/vNt44LvcJZZpTHBz/ApWByEjZ1ypl3sm
+
+            TIzcuU52hm+qHN3uet6GN+rY9udHC76pqLpFRdn0vbgpoIMzAoQtaNfaGd1V+01R
+
+            oRbynwO9YTD2zNIy6PDpsJqaD02l8zjTrZCP9Tv3Uq59KlaZOscmOt8+z5ODFt3W
+
+            PYwqX0lTrA6PRGmr/u+7JDtaul1jyinq3kut2+feIIRLgZ2OgHUGizZWRkzacYXP
+
+            VNUpuhGYb7S78d9FBZpnEjdpWAepxURKmObw+eON5Cuz69V1PnL5q6fTrUcQ
+
+            -----END RSA PRIVATE KEY-----
+
+node_types:
+
+    # base server type for installation without agent
+    agentless-nodecellar.nodes.ParentTypeServer:
+        derived_from: cloudify.vcloud.nodes.Server
+        properties:
+            install_agent:
+                default: false
+
+    vcloud_configuration:
+        derived_from: cloudify.nodes.Root
+        properties:
+            vcloud_config: {}
+
+node_templates:
+
+    vcloud_configuration:
+        type: vcloud_configuration
+        properties:
+            vcloud_config:
+                username: { get_input: vcloud_username }
+                password: { get_input: vcloud_password }
+                token: { get_input: vcloud_token }
+                url: { get_input: vcloud_url }
+                service: { get_input: vcloud_service }
+                org: { get_input: vcloud_org }
+                vdc: { get_input: vcloud_vdc }
+                service_type: { get_input: vcloud_service_type }
+                instance: { get_input: vcloud_instance }
+                api_version: { get_input: vcloud_api_version }
+                org_url: { get_input: vcloud_org_url }
+                edge_gateway: { get_input: edge_gateway }
+
+    common_keypair:
+        type: cloudify.vcloud.nodes.KeyPair
+        properties:
+            public_key:
+                user: { get_input: servers_user }
+                key: { get_input: user_public_key }
+            private_key:
+                key: { get_input: user_private_key }
+
+    nodejs_host:
+        type: agentless-nodecellar.nodes.ParentTypeServer
+        properties:
+            server:
+                catalog: { get_input: catalog }
+                template: { get_input: template }
+                guest_customization:
+                    public_keys:
+                        - { get_property: [common_keypair, public_key] }
+                hardware:
+                    cpu: { get_input: server_cpu }
+                    memory: { get_input: server_memory }
+            management_network: { get_input: common_network_name }
+            vcloud_config: { get_property: [vcloud_configuration, vcloud_config] }
+        relationships:
+            - target: common_keypair
+              type: cloudify.vcloud.server_connected_to_keypair
+            - target: nodejs_host_nat
+              type: cloudify.vcloud.server_connected_to_public_nat
+            - target: node_security_group
+              type: cloudify.vcloud.server_connected_to_security_group
+            - target: common_network
+              type: cloudify.vcloud.server_connected_to_network
+
+    mongod_host:
+        type: agentless-nodecellar.nodes.ParentTypeServer
+        properties:
+            server:
+                catalog: { get_input: catalog }
+                template: { get_input: template }
+                guest_customization:
+                    public_keys:
+                        - { get_property: [common_keypair, public_key] }
+                hardware:
+                    cpu: { get_input: server_cpu }
+                    memory: { get_input: server_memory }
+            management_network: { get_input: common_network_name }
+            vcloud_config: { get_property: [vcloud_configuration, vcloud_config] }
+        relationships:
+            - target: common_keypair
+              type: cloudify.vcloud.server_connected_to_keypair
+            - target: mongo_server_nat
+              type: cloudify.vcloud.server_connected_to_public_nat
+            - target: node_security_group
+              type: cloudify.vcloud.server_connected_to_security_group
+            - target: common_network
+              type: cloudify.vcloud.server_connected_to_network
+
+    common_network:
+        type: cloudify.vcloud.nodes.Network
+        properties:
+            use_external_resource: { get_input: network_use_existing }
+            resource_id: { get_input: common_network_name }
+            network:
+                name: { get_input: common_network_name }
+                edge_gateway: { get_input: edge_gateway }
+                static_range: 10.67.80.129-10.67.80.254
+                netmask: 255.255.255.0
+                gateway_ip: 10.67.80.1
+                dns:
+                    - 10.67.80.1
+                    - 8.8.8.8
+                dhcp:
+                    dhcp_range: 10.67.80.2-10.67.80.128
+            vcloud_config: { get_property: [vcloud_configuration, vcloud_config] }
+        relationships:
+            - target: common_network_nat
+              type: cloudify.vcloud.net_connected_to_public_nat
+
+    common_network_nat:
+        type: cloudify.vcloud.nodes.PublicNAT
+        properties:
+            use_external_resource: { get_input: common_network_public_nat_use_existing }
+            nat:
+                edge_gateway: { get_input: edge_gateway }
+                public_ip: { get_input: nodejs_ip_address }
+            rules:
+                - type: SNAT
+            vcloud_config: { get_property: [vcloud_configuration, vcloud_config] }
+
+    nodejs_host_nat:
+        type: cloudify.vcloud.nodes.PublicNAT
+        properties:
+            nat:
+                edge_gateway: { get_input: edge_gateway }
+                public_ip: { get_input: nodejs_ip_address }
+            rules:
+             - type: DNAT
+               protocol: tcp
+               original_port: { get_input: nodejs_http }
+               translated_port: 8080
+             - type: DNAT
+               protocol: tcp
+               original_port: { get_input: nodejs_ssh }
+               translated_port: 22
+            vcloud_config: { get_property: [vcloud_configuration, vcloud_config] }
+
+    mongo_server_nat:
+        type: cloudify.vcloud.nodes.PublicNAT
+        properties:
+            nat:
+                edge_gateway: { get_input: edge_gateway }
+                public_ip: { get_input: mongo_ip_address }
+            rules:
+             - type: DNAT
+               protocol: tcp
+               original_port: { get_input: mongo_ssh }
+               translated_port: 22
+            vcloud_config: { get_property: [vcloud_configuration, vcloud_config] }
+
+    node_security_group:
+        type: cloudify.vcloud.nodes.SecurityGroup
+        properties:
+            security_group:
+                name: nodevcloud_security_group
+                edge_gateway: { get_input: edge_gateway }
+            rules:
+                - source: any
+                  destination: internal
+                  destination_port: { get_input: nodejs_ssh }
+                  action: allow
+                  description: >
+                        ssh to node_js
+                  protocol: TCP
+                - source: any
+                  destination: internal
+                  destination_port: { get_input: mongo_ssh }
+                  action: allow
+                  description: >
+                        ssh to mongo
+                  protocol: TCP
+                - source: internal
+                  destination: internal
+                  destination_port: 27017
+                  action: allow
+                  description: >
+                        mongo <-> nodejs connection
+                  protocol: TCP
+                - source: external
+                  destination: internal
+                  destination_port: 8080
+                  action: allow
+                  description: >
+                        http to nodejs
+                  protocol: TCP
+                - source: internal
+                  destination: any
+                  action: allow
+                  description: >
+                         backward network connection for host updates
+                  protocol: any
+                - source: external
+                  destination: internal
+                  action: allow
+                  description: >
+                         Allow ping
+                  protocol: ICMP
+            vcloud_config: { get_property: [vcloud_configuration, vcloud_config] }
+
+    nodejs:
+        type: agentless.nodes.NodeJSServer
+        relationships:
+          - target: nodejs_host
+            type: cloudify.relationships.contained_in
+        interfaces:
+            cloudify.interfaces.lifecycle:
+                start:
+                    inputs:
+                        fabric_env:
+                            user: { get_attribute: [common_keypair, public_key, user] }
+                            key:  { get_attribute: [common_keypair, private_key, key] }
+                            host_string: { get_attribute: [nodejs_host_nat, public_ip] }
+                            port: { get_input: nodejs_ssh }
+
+    mongod:
+        type: agentless.nodes.MongoDatabase
+        properties:
+            port: 27017
+        relationships:
+          - target: mongod_host
+            type: cloudify.relationships.contained_in
+        interfaces:
+            cloudify.interfaces.lifecycle:
+                start:
+                    inputs:
+                        fabric_env:
+                            user: { get_attribute: [common_keypair, public_key, user] }
+                            key:  { get_attribute: [common_keypair, private_key, key] }
+                            host_string: { get_attribute: [mongo_server_nat, public_ip] }
+                            port: { get_input: mongo_ssh }
+
+    nodecellar:
+        type: agentless.nodes.nodecellar
+        properties:
+            port: 8080
+        interfaces:
+            cloudify.interfaces.lifecycle:
+                start:
+                    inputs:
+                        MONGO_HOST: { get_attribute: [mongod_host, ip] }
+                        fabric_env:
+                            user: { get_attribute: [common_keypair, public_key, user] }
+                            key:  { get_attribute: [common_keypair, private_key, key] }
+                            host_string: { get_attribute: [nodejs_host_nat, public_ip] }
+                            port: { get_input: nodejs_ssh }
+                stop:
+                    inputs:
+                        MONGO_HOST: { get_attribute: [mongod_host, ip] }
+                        fabric_env:
+                            user: { get_attribute: [common_keypair, public_key, user] }
+                            key:  { get_attribute: [common_keypair, private_key, key] }
+                            host_string: { get_attribute: [nodejs_host_nat, public_ip] }
+                            port: { get_input: nodejs_ssh }
+        relationships:
+          - type: cloudify.relationships.contained_in
+            target: nodejs
+          - type: cloudify.relationships.connected_to
+            target: mongod
+
+outputs:
+    nodejs_ip:
+        value: { get_attribute: [nodejs_host_nat, public_ip] }
