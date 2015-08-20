@@ -27,16 +27,26 @@ inputs:
       type: string
   auto_generate_ssh_keys:
       type: boolean
-  vcloud_url:
-      type: string
-  vcloud_service_type:
-      type: string
-  vcloud_api_version:
-      type: string
   vcloud_vdc:
       type: string
   vcloud_instance:
       type: string
+      default: ''
+  vcloud_service:
+      type: string
+      default: ''
+  vcloud_org:
+      type: string
+      default: ''
+  vcloud_url:
+      type: string
+      default: vca.vmware.com
+  vcloud_service_type:
+      type: string
+      default: ondemand
+  vcloud_api_version:
+      type: string
+      default: '5.7'
 
 
 node_types:
@@ -55,7 +65,8 @@ node_templates:
                 url: { get_input: vcloud_url }
                 instance: { get_input: vcloud_instance }
                 vdc: { get_input: vcloud_vdc }
-                org: { get_input: vcloud_vdc }
+                org: { get_input: vcloud_org }
+                service: { get_input: vcloud_service }
                 service_type: { get_input: vcloud_service_type }
                 api_version: { get_input: vcloud_api_version }
 

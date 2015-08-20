@@ -1,9 +1,3 @@
-vcloud_url: vca.vmware.com
-vcloud_vdc: vdc1
-vcloud_instance: 5a872845-6a7e-4e1d-b92a-99c45844417d
-vcloud_api_version: '5.7'
-vcloud_service_type: ondemand
-
 catalog: 'Public Catalog'
 template: 'Ubuntu Server 12.04 LTS (amd64 20150127)'
 network_name: net-101
@@ -15,3 +9,5 @@ public_ip: 107.189.88.182
 ssh_user: ubuntu
 auto_generate_ssh_keys: true
 
+vcloud_vdc: vdc1
+vcloud_instance: 5a872845-6a7e-4e1d-b92a-99c45844417d
