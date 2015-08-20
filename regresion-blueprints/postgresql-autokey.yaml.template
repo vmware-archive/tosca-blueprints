@@ -1,0 +1,10 @@
+common_network_name: some_network
+vcloud_username: some_user
+vcloud_password: some_secret_password
+vcloud_url: https://vchs.vmware.com
+vcloud_service: some_service
+vcloud_org: some_org
+vcloud_vdc: some_vdc
+edge_gateway: some_edge
+public_ip: some_mongo_ip
+network_use_existing: false
