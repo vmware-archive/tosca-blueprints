@@ -1,0 +1,67 @@
+node_types:
+
+    # template for nodejs node
+    agentless.nodes.NodeJSServer:
+        derived_from: cloudify.nodes.WebServer
+        interfaces:
+            cloudify.interfaces.lifecycle:
+                start:
+                    implementation: fabric.fabric_plugin.tasks.run_script
+                    inputs:
+                        script_path:
+                            default: scripts/install_nodejs.sh
+
+    # template for mongo node
+    agentless.nodes.MongoDatabase:
+        derived_from: cloudify.nodes.DBMS
+        properties:
+          port:
+            description: MongoDB port
+            type: integer
+        interfaces:
+            cloudify.interfaces.lifecycle:
+                start:
+                    implementation: fabric.fabric_plugin.tasks.run_script
+                    inputs:
+                        script_path:
+                            default: scripts/install_mongo.sh
+
+    # template for postgresql node
+    agentless.nodes.PostgreSqlDatabase:
+        derived_from: cloudify.nodes.DBMS
+        properties:
+          port:
+            description: PostgreSQL port
+            type: integer
+        interfaces:
+            cloudify.interfaces.lifecycle:
+                create:
+                    implementation: fabric.fabric_plugin.tasks.run_script
+                    inputs:
+                        script_path:
+                            default: scripts/install_postgresql.sh
+                delete:
+                    implementation: fabric.fabric_plugin.tasks.run_script
+                    inputs:
+                        script_path:
+                            default: scripts/uninstall_postgresql.sh
+
+    #template for nodejs application nodecellar
+    agentless.nodes.nodecellar:
+        derived_from: cloudify.nodes.ApplicationModule
+        properties:
+          port:
+            description: Web application port
+            type: integer
+        interfaces:
+            cloudify.interfaces.lifecycle:
+                start:
+                    implementation: fabric.fabric_plugin.tasks.run_script
+                    inputs:
+                        script_path:
+                            default: scripts/install_nodecellar.sh
+                stop:
+                    implementation: fabric.fabric_plugin.tasks.run_script
+                    inputs:
+                        script_path:
+                            default: scripts/stop_nodecellar.sh
