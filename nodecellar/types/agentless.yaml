@@ -26,26 +26,6 @@ node_types:
                         script_path:
                             default: scripts/install_mongo.sh
 
-    # template for postgresql node
-    agentless.nodes.PostgreSqlDatabase:
-        derived_from: cloudify.nodes.DBMS
-        properties:
-          port:
-            description: PostgreSQL port
-            type: integer
-        interfaces:
-            cloudify.interfaces.lifecycle:
-                create:
-                    implementation: fabric.fabric_plugin.tasks.run_script
-                    inputs:
-                        script_path:
-                            default: scripts/install_postgresql.sh
-                delete:
-                    implementation: fabric.fabric_plugin.tasks.run_script
-                    inputs:
-                        script_path:
-                            default: scripts/uninstall_postgresql.sh
-
     #template for nodejs application nodecellar
     agentless.nodes.nodecellar:
         derived_from: cloudify.nodes.ApplicationModule
