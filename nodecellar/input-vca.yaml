@@ -1,0 +1,8 @@
+public_ip: 107.189.88.182
+network_name: nc-net
+vcloud_vdc: vdc1
+vcloud_instance: 5a872845-6a7e-4e1d-b92a-99c45844417d
+# this is used for getting the VDC networks, use the vdc name temporarily. See issue SCOR-204
+vcloud_org: vdc1
+
+
