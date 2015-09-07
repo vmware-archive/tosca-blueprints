@@ -15,6 +15,8 @@ stop on shutdown
 # Automatically Respawn:
 respawn
 respawn limit 99 5
+setuid ubuntu
+setgid ubuntu
 script
     export NODECELLAR_PORT=8080
     export MONGO_PORT=27017

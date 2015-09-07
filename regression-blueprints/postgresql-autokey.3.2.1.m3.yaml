@@ -6,8 +6,8 @@ tosca_definitions_version: cloudify_dsl_1_0
 
 imports:
     - http://s3.amazonaws.com/vcloud-score/types.yaml
-    - https://raw.githubusercontent.com/cloudify-cosmo/tosca-vcloud-plugin/1.2.1m2/plugin.yaml
-    - http://s3.amazonaws.com/vcloud-score/cloudify-fabric-plugin/1.2/plugin.yaml
+    - https://raw.githubusercontent.com/cloudify-cosmo/tosca-vcloud-plugin/1.2.1m3/plugin.yaml
+    - https://raw.githubusercontent.com/vcloudair/cloudify-script-plugin/1.2.1m1/plugin.yaml
     - types/agentless.yaml
 
 inputs:
@@ -103,7 +103,7 @@ inputs:
     vcloud_org:
         type: string
         description: >
-            Organization uuid
+            Organization name
 
     vcloud_instance:
         type: string
@@ -266,25 +266,10 @@ node_templates:
               type: cloudify.vcloud.server_connected_to_security_group
 
     posgresql:
-        type: agentless.nodes.PostgreSqlDatabase
-        properties:
-            port: 5432
+        type: cloudify.nodes.DBMS
         relationships:
           - type: cloudify.relationships.contained_in
             target: postgresql_server
         interfaces:
             cloudify.interfaces.lifecycle:
-                create:
-                    inputs:
-                        fabric_env:
-                            user: { get_attribute: [ssh_keypair, public_key, user] }
-                            key:  { get_attribute: [ssh_keypair, private_key, key] }
-                            host_string: { get_attribute: [postrgesql_public_ip, public_ip] }
-                            port: { get_input: ssh_port }
-                delete:
-                    inputs:
-                        fabric_env:
-                            user: { get_attribute: [ssh_keypair, public_key, user] }
-                            key:  { get_attribute: [ssh_keypair, private_key, key] }
-                            host_string: { get_attribute: [postrgesql_public_ip, public_ip] }
-                            port: { get_input: ssh_port }
+                configure: scripts/install_postgresql.sh

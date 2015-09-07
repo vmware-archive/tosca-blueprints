@@ -82,7 +82,7 @@ inputs:
     vcloud_org:
         type: string
         description: >
-            Organization uuid
+            Organization name
 
     vcloud_vdc:
         type: string
