@@ -192,14 +192,6 @@ node_templates:
             public_key:
                 user: { get_input: ssh_user }
 
-    postgresql_port:
-        type: cloudify.vcloud.nodes.Port
-        properties:
-            port:
-                network: { get_input: common_network_name }
-                ip_allocation_mode: pool
-                primary_interface: true
-
     postgresql_security_group:
         type: cloudify.vcloud.nodes.SecurityGroup
         properties:
@@ -221,6 +213,12 @@ node_templates:
                   description: >
                         sql to management node
                   protocol: TCP
+                - source: internal
+                  destination: any
+                  action: allow
+                  description: >
+                         backward network connection for host updates
+                  protocol: any
             vcloud_config: { get_property: [vcloud_configuration, vcloud_config] }
 
     postrgesql_public_ip:
@@ -256,8 +254,8 @@ node_templates:
             management_network: { get_input: common_network_name }
             vcloud_config: { get_property: [vcloud_configuration, vcloud_config] }
         relationships:
-            - target: postgresql_port
-              type: cloudify.vcloud.server_connected_to_port
+            - target: common_network
+              type: cloudify.vcloud.server_connected_to_network
             - target: postrgesql_public_ip
               type: cloudify.vcloud.server_connected_to_public_nat
             - target: ssh_keypair
