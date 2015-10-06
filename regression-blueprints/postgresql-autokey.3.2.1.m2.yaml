@@ -1,0 +1,288 @@
+###########################################################
+# This Blueprint installs the PostgreSQL application
+###########################################################
+
+tosca_definitions_version: cloudify_dsl_1_0
+
+imports:
+    - http://s3.amazonaws.com/vcloud-score/types.yaml
+    - https://raw.githubusercontent.com/cloudify-cosmo/tosca-vcloud-plugin/1.2.1m2/plugin.yaml
+    - http://s3.amazonaws.com/vcloud-score/cloudify-fabric-plugin/1.2/plugin.yaml
+    - types/agentless.yaml
+
+inputs:
+    vcloud_username:
+        type: string
+        description: >
+            User login for vcloud air
+
+    vcloud_password:
+        type: string
+        default: ''
+        description: >
+            User password for vcloud air - for login by name + password
+
+    vcloud_token:
+        type: string
+        default: ''
+        description: >
+            User token for vcloud air - for login by name + token
+
+    catalog:
+        type: string
+        default: Public Catalog
+        description: >
+            Name of catalog, can be 'Public Catalog'
+
+    template:
+        type: string
+        default: Ubuntu Server 12.04 LTS (amd64 20150127)
+        description: >
+            Name of template from catalog,
+            can be 'Ubuntu Server 12.04 LTS (amd64 20150127)'
+
+    common_network_name:
+        type: string
+        description: >
+            Name common network that can be used for nodes
+
+    edge_gateway:
+        type: string
+        default: gateway
+        description: >
+            For 'ondemand' service type, the value of edge_gateway
+            is always 'gateway'
+
+    public_ip:
+        type: string
+        default: ''
+        description: >
+            Ip used for connection from outside
+
+    server_name:
+        type: string
+        default: postgresql
+        description: >
+            Human readible name for server
+
+    ssh_user:
+        default: ubuntu
+        type: string
+        description: >
+            Default admin user in os template
+
+    vcloud_url:
+        type: string
+        default: 'vca.vmware.com'
+        description: >
+            Vcloud url
+
+    vcloud_service:
+        type: string
+        default: ''
+        description: >
+            Vcloud service
+
+    vcloud_service_type:
+        type: string
+        default: 'subscription'
+        description: >
+            Type of service: subscription, ondemand, vcd, private
+
+    vcloud_api_version:
+        type: string
+        default: '5.7'
+        description: >
+            Version of api, for now 5.6
+
+    vcloud_vdc:
+        type: string
+        description: >
+            Virtual data center name
+
+    vcloud_org:
+        type: string
+        description: >
+            Organization name
+
+    vcloud_instance:
+        type: string
+        default: ''
+        description: >
+            Only required for ondemand service type, instance uuid
+
+    ssh_port:
+        type: string
+        default: 22
+        description: >
+            SSH port that can be used for installed node
+
+    sql_port:
+        type: string
+        default: 5432
+        description: >
+            Port for sql connections
+
+    network_use_existing:
+        type: boolean
+        default: false
+        description: >
+            Use existed network
+
+node_types:
+
+    vcloud_configuration:
+        derived_from: cloudify.nodes.Root
+        properties:
+            vcloud_config: {}
+
+node_templates:
+
+    vcloud_configuration:
+        type: vcloud_configuration
+        properties:
+            vcloud_config:
+                username: { get_input: vcloud_username }
+                password: { get_input: vcloud_password }
+                token: { get_input: vcloud_token }
+                url: { get_input: vcloud_url }
+                instance: { get_input: vcloud_instance }
+                vdc: { get_input: vcloud_vdc }
+                org: { get_input: vcloud_org }
+                service_type: { get_input: vcloud_service_type }
+                service: { get_input: vcloud_service }
+                api_version: { get_input: vcloud_api_version }
+
+    common_network_nat:
+        type: cloudify.vcloud.nodes.PublicNAT
+        properties:
+            use_external_resource: { get_input: network_use_existing }
+            nat:
+                edge_gateway: { get_input: edge_gateway }
+                public_ip: { get_input: public_ip }
+            rules:
+                - type: SNAT
+            vcloud_config: { get_property: [vcloud_configuration, vcloud_config] }
+
+    common_network:
+        type: cloudify.vcloud.nodes.Network
+        properties:
+            use_external_resource: { get_input: network_use_existing }
+            resource_id: { get_input: common_network_name }
+            network:
+                name: { get_input: common_network_name }
+                edge_gateway: { get_input: edge_gateway }
+                static_range: 10.67.09.129-10.67.09.254
+                netmask: 255.255.255.0
+                gateway_ip: 10.67.09.1
+                dns:
+                    - 10.67.09.1
+                    - 8.8.8.8
+                dhcp:
+                    dhcp_range: 10.67.09.2-10.67.09.128
+            vcloud_config: { get_property: [vcloud_configuration, vcloud_config] }
+        relationships:
+            - target: common_network_nat
+              type: cloudify.vcloud.net_connected_to_public_nat
+
+    ssh_keypair:
+        type: cloudify.vcloud.nodes.KeyPair
+        properties:
+            auto_generate: true
+            public_key:
+                user: { get_input: ssh_user }
+
+    postgresql_security_group:
+        type: cloudify.vcloud.nodes.SecurityGroup
+        properties:
+            security_group:
+                name: postgresql_security_group
+                edge_gateway: { get_input: edge_gateway }
+            rules:
+                - source: external
+                  destination: internal
+                  destination_port: { get_input: ssh_port }
+                  action: allow
+                  description: >
+                        ssh between external net and postgresql node
+                  protocol: TCP
+                - source: external
+                  destination: internal
+                  destination_port: { get_input: sql_port }
+                  action: allow
+                  description: >
+                        sql to management node
+                  protocol: TCP
+                - source: internal
+                  destination: any
+                  action: allow
+                  description: >
+                         backward network connection for host updates
+                  protocol: any
+            vcloud_config: { get_property: [vcloud_configuration, vcloud_config] }
+
+    postrgesql_public_ip:
+        type: cloudify.vcloud.nodes.PublicNAT
+        properties:
+            nat:
+                edge_gateway: { get_input: edge_gateway }
+                public_ip: { get_input: public_ip }
+            rules:
+                - type: SNAT
+                - type: DNAT
+                  protocol: tcp
+                  original_port:  { get_input: ssh_port }
+                  translated_port: 22
+                - type: DNAT
+                  protocol: tcp
+                  original_port: { get_input: sql_port }
+                  translated_port: 5432
+
+    postgresql_server:
+        type: cloudify.vcloud.nodes.Server
+        properties:
+            server:
+                name: { get_input: server_name }
+                catalog: { get_input: catalog }
+                template: { get_input: template }
+                hardware:
+                    cpu: 3
+                    memory: 2048
+                guest_customization:
+                    computer_name: { get_input: server_name }
+            install_agent: false
+            management_network: { get_input: common_network_name }
+            vcloud_config: { get_property: [vcloud_configuration, vcloud_config] }
+        relationships:
+            - target: common_network
+              type: cloudify.vcloud.server_connected_to_network
+            - target: postrgesql_public_ip
+              type: cloudify.vcloud.server_connected_to_public_nat
+            - target: ssh_keypair
+              type: cloudify.vcloud.server_connected_to_keypair
+            - target: postgresql_security_group
+              type: cloudify.vcloud.server_connected_to_security_group
+
+    posgresql:
+        type: agentless.nodes.PostgreSqlDatabase
+        properties:
+            port: 5432
+        relationships:
+          - type: cloudify.relationships.contained_in
+            target: postgresql_server
+        interfaces:
+            cloudify.interfaces.lifecycle:
+                create:
+                    inputs:
+                        fabric_env:
+                            user: { get_attribute: [ssh_keypair, public_key, user] }
+                            key:  { get_attribute: [ssh_keypair, private_key, key] }
+                            host_string: { get_attribute: [postrgesql_public_ip, public_ip] }
+                            port: { get_input: ssh_port }
+                delete:
+                    inputs:
+                        fabric_env:
+                            user: { get_attribute: [ssh_keypair, public_key, user] }
+                            key:  { get_attribute: [ssh_keypair, private_key, key] }
+                            host_string: { get_attribute: [postrgesql_public_ip, public_ip] }
+                            port: { get_input: ssh_port }

@@ -6,8 +6,8 @@ tosca_definitions_version: cloudify_dsl_1_0
 
 imports:
     - http://s3.amazonaws.com/vcloud-score/types.yaml
-    - https://raw.githubusercontent.com/cloudify-cosmo/tosca-vcloud-plugin/1.2.1m2/plugin.yaml
-    - http://s3.amazonaws.com/vcloud-score/cloudify-fabric-plugin/1.2/plugin.yaml
+    - https://raw.githubusercontent.com/cloudify-cosmo/tosca-vcloud-plugin/1.2.1m3/plugin.yaml
+    - https://raw.githubusercontent.com/vcloudair/cloudify-script-plugin/1.2.1m1/plugin.yaml
     - types/agentless.yaml
 
 inputs:
@@ -103,7 +103,7 @@ inputs:
     vcloud_org:
         type: string
         description: >
-            Organization uuid
+            Organization name
 
     vcloud_instance:
         type: string
@@ -192,14 +192,6 @@ node_templates:
             public_key:
                 user: { get_input: ssh_user }
 
-    postgresql_port:
-        type: cloudify.vcloud.nodes.Port
-        properties:
-            port:
-                network: { get_input: common_network_name }
-                ip_allocation_mode: pool
-                primary_interface: true
-
     postgresql_security_group:
         type: cloudify.vcloud.nodes.SecurityGroup
         properties:
@@ -221,6 +213,12 @@ node_templates:
                   description: >
                         sql to management node
                   protocol: TCP
+                - source: internal
+                  destination: any
+                  action: allow
+                  description: >
+                         backward network connection for host updates
+                  protocol: any
             vcloud_config: { get_property: [vcloud_configuration, vcloud_config] }
 
     postrgesql_public_ip:
@@ -256,8 +254,8 @@ node_templates:
             management_network: { get_input: common_network_name }
             vcloud_config: { get_property: [vcloud_configuration, vcloud_config] }
         relationships:
-            - target: postgresql_port
-              type: cloudify.vcloud.server_connected_to_port
+            - target: common_network
+              type: cloudify.vcloud.server_connected_to_network
             - target: postrgesql_public_ip
               type: cloudify.vcloud.server_connected_to_public_nat
             - target: ssh_keypair
@@ -266,25 +264,10 @@ node_templates:
               type: cloudify.vcloud.server_connected_to_security_group
 
     posgresql:
-        type: agentless.nodes.PostgreSqlDatabase
-        properties:
-            port: 5432
+        type: cloudify.nodes.DBMS
         relationships:
           - type: cloudify.relationships.contained_in
             target: postgresql_server
         interfaces:
             cloudify.interfaces.lifecycle:
-                create:
-                    inputs:
-                        fabric_env:
-                            user: { get_attribute: [ssh_keypair, public_key, user] }
-                            key:  { get_attribute: [ssh_keypair, private_key, key] }
-                            host_string: { get_attribute: [postrgesql_public_ip, public_ip] }
-                            port: { get_input: ssh_port }
-                delete:
-                    inputs:
-                        fabric_env:
-                            user: { get_attribute: [ssh_keypair, public_key, user] }
-                            key:  { get_attribute: [ssh_keypair, private_key, key] }
-                            host_string: { get_attribute: [postrgesql_public_ip, public_ip] }
-                            port: { get_input: ssh_port }
+                configure: scripts/install_postgresql.sh

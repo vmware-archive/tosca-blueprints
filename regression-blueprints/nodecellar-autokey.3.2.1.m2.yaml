@@ -2,11 +2,28 @@ tosca_definitions_version: cloudify_dsl_1_0
 
 imports:
     - http://s3.amazonaws.com/vcloud-score/types.yaml
-    - https://raw.githubusercontent.com/cloudify-cosmo/tosca-vcloud-plugin/1.2.1m3/plugin.yaml
-    - http://s3.amazonaws.com/vcloud-score/cloudify-fabric-plugin/1.2.1/plugin.yaml
+    - https://raw.githubusercontent.com/cloudify-cosmo/tosca-vcloud-plugin/1.2.1m2/plugin.yaml
+    - http://s3.amazonaws.com/vcloud-score/cloudify-fabric-plugin/1.2/plugin.yaml
     - types/agentless.yaml
 
 inputs:
+    vcloud_username:
+        type: string
+        description: >
+            User login for vcloud air
+
+    vcloud_password:
+        type: string
+        default: ''
+        description: >
+            User password for vcloud air - for login by name + password
+
+    vcloud_token:
+        type: string
+        default: ''
+        description: >
+            User token for vcloud air - for login by name + token
+
     vcloud_url:
         type: string
         description: >
@@ -35,7 +52,19 @@ inputs:
         description: >
             Version of api, for now 5.6
 
-    http_port:
+    nodejs_ssh:
+        type: string
+        default: 22
+        description: >
+            Ssh port for nodejs host
+
+    mongo_ssh:
+        type: string
+        default: 23
+        description: >
+            Ssh port for mongodb host
+
+    nodejs_http:
         type: string
         default: 8080
         description: >
@@ -53,7 +82,7 @@ inputs:
     vcloud_org:
         type: string
         description: >
-            Organization uuid
+            Organization name
 
     vcloud_vdc:
         type: string
@@ -91,17 +120,31 @@ inputs:
         description: >
             Use existed network
 
-    network_name:
+    common_network_name:
         type: string
         description: >
             Name common network that can be used for nodes
 
-    public_ip:
+    nodejs_ip_address:
         type: string
         default: ''
         description: >
             For 'ondemand' service type, the value of
-            public_ip can be empty
+            nodejs_ip_address can be empty
+
+    mongo_ip_address:
+        type: string
+        default: ''
+        description: >
+            For 'ondemand' service type, the value of
+            mongo_ip_address can be empty
+
+    common_network_public_nat_use_existing:
+        type: boolean
+        default: false
+        description: >
+            Use already existed nat rules, only for case when you
+            doesn't want to change nat rules
 
     edge_gateway:
         type: string
@@ -109,6 +152,12 @@ inputs:
         description: >
             For 'ondemand' service type, the value of edge_gateway
             is always 'gateway'
+
+    servers_user:
+        default: ubuntu
+        type: string
+        description: >
+            Default admin user in os template
 
 node_types:
 
@@ -130,6 +179,9 @@ node_templates:
         type: vcloud_configuration
         properties:
             vcloud_config:
+                username: { get_input: vcloud_username }
+                password: { get_input: vcloud_password }
+                token: { get_input: vcloud_token }
                 url: { get_input: vcloud_url }
                 service: { get_input: vcloud_service }
                 org: { get_input: vcloud_org }
@@ -145,39 +197,7 @@ node_templates:
         properties:
             auto_generate: true
             public_key:
-                user: ubuntu
-
-    common_network_nat:
-        type: cloudify.vcloud.nodes.PublicNAT
-        properties:
-            use_external_resource: false
-            nat:
-                edge_gateway: { get_input: edge_gateway }
-                public_ip: { get_input: public_ip }
-            rules:
-                - type: SNAT
-            vcloud_config: { get_property: [vcloud_configuration, vcloud_config] }
-
-    common_network:
-        type: cloudify.vcloud.nodes.Network
-        properties:
-            use_external_resource: { get_input: network_use_existing }
-            resource_id: { get_input: network_name }
-            network:
-                name: { get_input: network_name }
-                edge_gateway: { get_input: edge_gateway }
-                static_range: 10.67.80.129-10.67.80.254
-                netmask: 255.255.255.0
-                gateway_ip: 10.67.80.1
-                dns:
-                    - 10.67.80.1
-                    - 8.8.8.8
-                dhcp:
-                    dhcp_range: 10.67.80.2-10.67.80.128
-            vcloud_config: { get_property: [vcloud_configuration, vcloud_config] }
-        relationships:
-            - target: common_network_nat
-              type: cloudify.vcloud.net_connected_to_public_nat
+                user: { get_input: servers_user }
 
     nodejs_host:
         type: agentless-nodecellar.nodes.ParentTypeServer
@@ -191,7 +211,7 @@ node_templates:
                 hardware:
                     cpu: { get_input: server_cpu }
                     memory: { get_input: server_memory }
-            management_network: { get_input: network_name }
+            management_network: { get_input: common_network_name }
             vcloud_config: { get_property: [vcloud_configuration, vcloud_config] }
         relationships:
             - target: common_keypair
@@ -215,7 +235,7 @@ node_templates:
                 hardware:
                     cpu: { get_input: server_cpu }
                     memory: { get_input: server_memory }
-            management_network: { get_input: network_name }
+            management_network: { get_input: common_network_name }
             vcloud_config: { get_property: [vcloud_configuration, vcloud_config] }
         relationships:
             - target: common_keypair
@@ -227,20 +247,52 @@ node_templates:
             - target: common_network
               type: cloudify.vcloud.server_connected_to_network
 
+    common_network:
+        type: cloudify.vcloud.nodes.Network
+        properties:
+            use_external_resource: { get_input: network_use_existing }
+            resource_id: { get_input: common_network_name }
+            network:
+                name: { get_input: common_network_name }
+                edge_gateway: { get_input: edge_gateway }
+                static_range: 10.67.80.129-10.67.80.254
+                netmask: 255.255.255.0
+                gateway_ip: 10.67.80.1
+                dns:
+                    - 10.67.80.1
+                    - 8.8.8.8
+                dhcp:
+                    dhcp_range: 10.67.80.2-10.67.80.128
+            vcloud_config: { get_property: [vcloud_configuration, vcloud_config] }
+        relationships:
+            - target: common_network_nat
+              type: cloudify.vcloud.net_connected_to_public_nat
+
+    common_network_nat:
+        type: cloudify.vcloud.nodes.PublicNAT
+        properties:
+            use_external_resource: { get_input: common_network_public_nat_use_existing }
+            nat:
+                edge_gateway: { get_input: edge_gateway }
+                public_ip: { get_input: nodejs_ip_address }
+            rules:
+                - type: SNAT
+            vcloud_config: { get_property: [vcloud_configuration, vcloud_config] }
+
     nodejs_host_nat:
         type: cloudify.vcloud.nodes.PublicNAT
         properties:
             nat:
                 edge_gateway: { get_input: edge_gateway }
-                public_ip: { get_input: public_ip }
+                public_ip: { get_input: nodejs_ip_address }
             rules:
              - type: DNAT
                protocol: tcp
-               original_port: { get_input: http_port }
+               original_port: { get_input: nodejs_http }
                translated_port: 8080
              - type: DNAT
                protocol: tcp
-               original_port: 22
+               original_port: { get_input: nodejs_ssh }
                translated_port: 22
             vcloud_config: { get_property: [vcloud_configuration, vcloud_config] }
 
@@ -249,11 +301,11 @@ node_templates:
         properties:
             nat:
                 edge_gateway: { get_input: edge_gateway }
-                public_ip: { get_input: public_ip }
+                public_ip: { get_input: mongo_ip_address }
             rules:
              - type: DNAT
                protocol: tcp
-               original_port: 23
+               original_port: { get_input: mongo_ssh }
                translated_port: 22
             vcloud_config: { get_property: [vcloud_configuration, vcloud_config] }
 
@@ -266,14 +318,14 @@ node_templates:
             rules:
                 - source: any
                   destination: internal
-                  destination_port: 22
+                  destination_port: { get_input: nodejs_ssh }
                   action: allow
                   description: >
                         ssh to node_js
                   protocol: TCP
                 - source: any
                   destination: internal
-                  destination_port: 23
+                  destination_port: { get_input: mongo_ssh }
                   action: allow
                   description: >
                         ssh to mongo
@@ -319,7 +371,7 @@ node_templates:
                             user: { get_attribute: [common_keypair, public_key, user] }
                             key:  { get_attribute: [common_keypair, private_key, key] }
                             host_string: { get_attribute: [nodejs_host_nat, public_ip] }
-                            port: 22
+                            port: { get_input: nodejs_ssh }
 
     mongod:
         type: agentless.nodes.MongoDatabase
@@ -336,7 +388,7 @@ node_templates:
                             user: { get_attribute: [common_keypair, public_key, user] }
                             key:  { get_attribute: [common_keypair, private_key, key] }
                             host_string: { get_attribute: [mongo_server_nat, public_ip] }
-                            port: 23
+                            port: { get_input: mongo_ssh }
 
     nodecellar:
         type: agentless.nodes.nodecellar
@@ -351,7 +403,7 @@ node_templates:
                             user: { get_attribute: [common_keypair, public_key, user] }
                             key:  { get_attribute: [common_keypair, private_key, key] }
                             host_string: { get_attribute: [nodejs_host_nat, public_ip] }
-                            port: 22
+                            port: { get_input: nodejs_ssh }
                 stop:
                     inputs:
                         MONGO_HOST: { get_attribute: [mongod_host, ip] }
@@ -359,7 +411,7 @@ node_templates:
                             user: { get_attribute: [common_keypair, public_key, user] }
                             key:  { get_attribute: [common_keypair, private_key, key] }
                             host_string: { get_attribute: [nodejs_host_nat, public_ip] }
-                            port: 22
+                            port: { get_input: nodejs_ssh }
         relationships:
           - type: cloudify.relationships.contained_in
             target: nodejs

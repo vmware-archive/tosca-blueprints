@@ -134,8 +134,7 @@ node_templates:
                     inputs:
                       script_path: script.sh
                       fabric_env:
-                        host_string: { get_input: public_ip }
-                        host: { get_input: public_ip }
+                        host_string: { get_attribute: [example_public_ip, public_ip] }
                         user: { get_attribute: [ssh_keypair, public_key, user] }
                         key: { get_attribute: [ssh_keypair, private_key, key] }
                         disable_known_hosts: True
