@@ -1,12 +1,16 @@
-tosca_definitions_version: cloudify_dsl_1_0
+tosca_definitions_version: cloudify_dsl_1_2
 
 imports:
-    - http://s3.amazonaws.com/vcloud-score/types.yaml
-    - https://raw.githubusercontent.com/cloudify-cosmo/tosca-vcloud-plugin/1.2.1m3/plugin.yaml
+    - http://www.getcloudify.org/spec/cloudify/3.2m6/types.yaml
+    - https://raw.githubusercontent.com/cloudify-cosmo/tosca-vcloud-plugin/TI/plugin.yaml
     - http://s3.amazonaws.com/vcloud-score/cloudify-fabric-plugin/1.2.1/plugin.yaml
     - types/agentless.yaml
 
 inputs:
+    ssl_verify:
+        type: boolean
+        default: false
+
     vcloud_url:
         type: string
         default: 'https://vca.vmware.com'
@@ -142,6 +146,7 @@ node_templates:
                 api_version: { get_input: vcloud_api_version }
                 org_url: { get_input: vcloud_org_url }
                 edge_gateway: { get_input: edge_gateway }
+                ssl_verify: { get_input: ssl_verify }
 
     common_keypair:
         type: cloudify.vcloud.nodes.KeyPair

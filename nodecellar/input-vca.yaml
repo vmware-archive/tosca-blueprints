@@ -1,8 +1,21 @@
-public_ip: 107.189.88.182
-network_name: nc-net
-vcloud_vdc: vdc1
-vcloud_instance: 5a872845-6a7e-4e1d-b92a-99c45844417d
-# this is used for getting the VDC networks, use the vdc name temporarily. See issue SCOR-204
-vcloud_org: vdc1
-
-
+ssl_verify: false
+vcloud_url: https://vca.vmware.com
+vcloud_service: vcd
+vcloud_service_type: ****
+vcloud_instance: ******
+vcloud_api_version: 5.5
+vcloud_org_url: ********
+vcloud_org: ********
+vcloud_vdc: ********
+catalog: *********
+template: ********
+####################################
+server_cpu: *********
+server_memory: *********
+####################################
+network_use_existing: true
+network_name: *********
+public_ip: ***********
+edge_gateway: ***********
+####################################
+http_port: 8080
