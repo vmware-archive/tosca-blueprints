@@ -57,3 +57,4 @@ target/
 
 # OSX FS meta file
 .DS_Store
+.idea/*
